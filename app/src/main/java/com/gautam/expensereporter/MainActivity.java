@@ -3,6 +3,7 @@ package com.gautam.expensereporter;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -17,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.io.File;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -38,6 +40,8 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
+        handleSharedData();
+
         database = AppDatabase.getInstance(this);
         lstExpenses = findViewById(R.id.lstExpenses);
         lblTotalExpenses = findViewById(R.id.lblTotalExpenses);
@@ -54,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
         adapter = new ExpenseAdapter(this, expenses, new AdapterListener<Expense>() {
             @Override
             public void onDeleteItem(Expense item) {
+                File invoiceFile = new File(getFilesDir(), item.invoicePath);
+                invoiceFile.delete();
                 database.expenseDao().delete(item);
                 refreshRecyclerView();
             }
@@ -98,5 +104,17 @@ public class MainActivity extends AppCompatActivity {
     void openNewExpenseActivity() {
         Intent intent = new Intent(MainActivity.this, NewExpenseActivity.class);
         startActivity(intent);
+    }
+
+    void handleSharedData() {
+        Intent intent = getIntent();
+        if(Intent.ACTION_SEND.equals(intent.getAction()) && intent.getType() != null) {
+            Intent sharedIntent = new Intent(MainActivity.this, NewExpenseActivity.class);
+            sharedIntent.setAction(intent.getAction());
+            sharedIntent.putExtra(Intent.EXTRA_STREAM,
+                    (Parcelable) intent.getParcelableExtra(Intent.EXTRA_STREAM));
+            sharedIntent.setType(intent.getType());
+            startActivity(sharedIntent);
+        }
     }
 }

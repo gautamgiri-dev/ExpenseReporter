@@ -13,6 +13,7 @@ import androidx.fragment.app.DialogFragment;
 public class ExpenseItemDialog extends DialogFragment {
     public interface ExpenseItemDialogResultListener {
         void onViewInvoice(DialogFragment d);
+        void onEditInvoice(DialogFragment d);
         void onDeleteInvoice(DialogFragment d);
     }
 
@@ -25,12 +26,14 @@ public class ExpenseItemDialog extends DialogFragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.view_expense_dialog, container, false);
-        Button btnViewInvoice, btnDeleteExpense;
+        Button btnViewInvoice, btnDeleteExpense, btnEditInvoice;
 
         btnViewInvoice = view.findViewById(R.id.btnViewInvoice);
+        btnEditInvoice = view.findViewById(R.id.btnEditInvoice);
         btnDeleteExpense = view.findViewById(R.id.btnDeleteExpense);
 
         btnViewInvoice.setOnClickListener(v -> this.resultListener.onViewInvoice(this));
+        btnEditInvoice.setOnClickListener(v -> this.resultListener.onEditInvoice(this));
         btnDeleteExpense.setOnClickListener(v -> this.resultListener.onDeleteInvoice(this));
         return view;
     }

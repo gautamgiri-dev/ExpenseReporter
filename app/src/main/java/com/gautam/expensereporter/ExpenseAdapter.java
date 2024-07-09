@@ -60,6 +60,12 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ViewHold
                 }
 
                 @Override
+                public void onEditInvoice(DialogFragment d) {
+                    editInvoice(expense);
+                    d.dismiss();
+                }
+
+                @Override
                 public void onDeleteInvoice(DialogFragment d) {
                     deleteExpense(expense);
                     d.dismiss();
@@ -68,6 +74,12 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ViewHold
 
             listener.showDialog(dialog);
         });
+    }
+
+    void editInvoice(Expense expense) {
+        Intent intent = new Intent(context, NewExpenseActivity.class);
+        intent.putExtra("invoiceId", expense.id);
+        context.startActivity(intent);
     }
 
     void deleteExpense(Expense expense) {

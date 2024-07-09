@@ -13,6 +13,12 @@
         android:text="View Invoice" />
 
     <Button
+        android:id="@+id/btnEditInvoice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Edit Invoice" />
+
+    <Button
         android:id="@+id/btnDeleteExpense"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

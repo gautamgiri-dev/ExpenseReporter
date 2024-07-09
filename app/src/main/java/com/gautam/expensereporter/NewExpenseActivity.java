@@ -3,6 +3,7 @@ package com.gautam.expensereporter;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
@@ -24,6 +25,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -47,7 +49,7 @@ public class NewExpenseActivity extends AppCompatActivity {
     ImageView imgInvoice;
     EditText txtTitle, txtNote, txtAmount;
     final SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault());
-
+    boolean isEditMode = false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,8 +62,13 @@ public class NewExpenseActivity extends AppCompatActivity {
         });
 
         database = AppDatabase.getInstance(this);
-        ;
-        expense = new Expense();
+
+        int editInvoiceIndex = getIntent().getIntExtra("invoiceId",-1);
+        isEditMode = editInvoiceIndex != -1;
+        if(!isEditMode)
+            expense = new Expense();
+        else
+            expense = database.expenseDao().get(editInvoiceIndex);
 
         btnAttachInvoice = findViewById(R.id.btnAttachInvoice);
         btnSave = findViewById(R.id.btnSave);
@@ -76,17 +83,65 @@ public class NewExpenseActivity extends AppCompatActivity {
         imgInvoice = findViewById(R.id.imgInvoicePreview);
 
         dialog = new AttachInvoiceDialog(this);
+
+        handleSharedInvoice();
+
         btnAttachInvoice.setOnClickListener(v -> initAttachFileDialog());
         btnCancel.setOnClickListener(v -> finish());
         btnSave.setOnClickListener(v -> SaveExpense());
 
         initExpenseTypeSpinner();
         initDatePickerDialog();
+
+        if(isEditMode) handleEditInvoice();
+        else handleNewInvoice();
+
+        dateTimePicker.setOnClickListener(v -> datePickerDialog.show());
+    }
+
+    void handleEditInvoice() {
+        Log.d("Edit Invoice", "handleEditInvoice: Editing invoice " + expense.invoicePath);
+        btnSave.setText("Update");
+        txtTitle.setText(expense.title);
+        txtNote.setText(expense.note);
+        txtAmount.setText(String.valueOf(expense.amount));
+        if(expense.invoiceType == InvoiceType.IMAGE){
+            File f = new File(getFilesDir(), expense.invoicePath);
+            Uri uri = Uri.fromFile(f);
+            imgInvoice.setImageURI(uri);
+        }else{
+            imgInvoice.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.mdi_pdf));
+        }
+        imgInvoice.setVisibility(View.VISIBLE);
+    }
+
+    void handleNewInvoice() {
         selectedDateTime = Calendar.getInstance();
         expense.date = selectedDateTime.getTime();
         txtExpenseDate.setText(sdf.format(selectedDateTime.getTime()));
+    }
 
-        dateTimePicker.setOnClickListener(v -> datePickerDialog.show());
+    void handleSharedInvoice() {
+        Intent intent = getIntent();
+        String action = intent.getAction();
+        String type = intent.getType();
+
+        Log.d("Shared Invoice", "handleSharedInvoice: " + action + " " + type);
+
+        if(type == null) return;
+        boolean validRequest = type.startsWith("image") || type.equals("application/pdf");
+        if(Intent.ACTION_SEND.equals(action) && validRequest && dialog != null) {
+            dialog.cameraUsed = false;
+            dialog.invoicePath = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            if(type.startsWith("image")) dialog.invoiceType = InvoiceType.IMAGE;
+            else dialog.invoiceType = InvoiceType.PDF;
+
+            if(dialog.invoiceType == InvoiceType.IMAGE)
+                imgInvoice.setImageURI(dialog.invoicePath);
+            else
+                imgInvoice.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.mdi_pdf));
+            imgInvoice.setVisibility(View.VISIBLE);
+        }
     }
 
     void initAttachFileDialog() {
@@ -190,6 +245,7 @@ public class NewExpenseActivity extends AppCompatActivity {
         try {
             expense.amount = Double.parseDouble(txtAmount.getText().toString());
         } catch (NumberFormatException ne) {
+            Toast.makeText(this, "Amount cannot be empty", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -203,35 +259,41 @@ public class NewExpenseActivity extends AppCompatActivity {
             return;
         }
 
-        if (!dialog.isInvoiceAttached()) {
+        if (!dialog.isInvoiceAttached() && !isEditMode) {
             Toast.makeText(this, "No invoice attached", Toast.LENGTH_SHORT).show();
             return;
         }
 
         // copy invoice to local folder
-        SimpleDateFormat _sdf = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault());
-        String destinationFileName = expense.title + "_" + _sdf.format(expense.date);
-        String extension = ".jpg";
-        if (!dialog.cameraUsed) {
-            Uri invoicePath = dialog.invoicePath;
-            if (dialog.invoiceType == InvoiceType.IMAGE) {
-                String filename = getFileNameFromUri(this, invoicePath);
-                int index = filename.lastIndexOf('.');
-                if (index != -1) extension = filename.substring(index);
-            } else if (dialog.invoiceType == InvoiceType.PDF) {
-                extension = ".pdf";
-            } else return;
-            expense.invoicePath = copyInvoiceDocumentToApp(invoicePath, destinationFileName + extension);
-        } else {
-            if (dialog.invoiceImage != null)
-                expense.invoicePath = writeInvoiceImageToDocument(dialog.invoiceImage, destinationFileName + ".jpg");
+        if(dialog.isInvoiceAttached()) {
+            SimpleDateFormat _sdf = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault());
+            String destinationFileName = expense.title + "_" + _sdf.format(expense.date);
+            String extension = ".jpg";
+            if (!dialog.cameraUsed) {
+                Uri invoicePath = dialog.invoicePath;
+                if (dialog.invoiceType == InvoiceType.IMAGE) {
+                    String filename = getFileNameFromUri(this, invoicePath);
+                    int index = filename.lastIndexOf('.');
+                    if (index != -1) extension = filename.substring(index);
+                } else if (dialog.invoiceType == InvoiceType.PDF) {
+                    extension = ".pdf";
+                } else return;
+                expense.invoicePath = copyInvoiceDocumentToApp(invoicePath, destinationFileName + extension);
+            } else {
+                if (dialog.invoiceImage != null)
+                    expense.invoicePath = writeInvoiceImageToDocument(dialog.invoiceImage, destinationFileName + ".jpg");
+            }
+            expense.invoiceType = dialog.invoiceType;
         }
-
-        expense.invoiceType = dialog.invoiceType;
-
-        database.expenseDao().insert(expense);
-
-        Toast.makeText(this, "Expense recorded succesfully!", Toast.LENGTH_SHORT).show();
+        String message;
+        if(isEditMode){
+            database.expenseDao().update(expense);
+            message = "Expense updated succesfully!";
+        }else{
+            database.expenseDao().insert(expense);
+            message = "Expense recorded succesfully!";
+        }
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         finish();
     }
 

@@ -27,7 +27,6 @@ public abstract class AppDatabase extends RoomDatabase {
                 context,
                 AppDatabase.class,
                 DB_NAME)
-                .fallbackToDestructiveMigration()
                 .allowMainThreadQueries()
                 .build();
     }
