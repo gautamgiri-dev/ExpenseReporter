@@ -84,8 +84,6 @@ public class NewExpenseActivity extends AppCompatActivity {
 
         dialog = new AttachInvoiceDialog(this);
 
-        handleSharedInvoice();
-
         btnAttachInvoice.setOnClickListener(v -> initAttachFileDialog());
         btnCancel.setOnClickListener(v -> finish());
         btnSave.setOnClickListener(v -> SaveExpense());
@@ -93,9 +91,11 @@ public class NewExpenseActivity extends AppCompatActivity {
         initExpenseTypeSpinner();
         initDatePickerDialog();
 
+
         if(isEditMode) handleEditInvoice();
         else handleNewInvoice();
 
+        if(isSharedInvoice()) handleSharedInvoice();
         dateTimePicker.setOnClickListener(v -> datePickerDialog.show());
     }
 
@@ -113,12 +113,18 @@ public class NewExpenseActivity extends AppCompatActivity {
             imgInvoice.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.mdi_pdf));
         }
         imgInvoice.setVisibility(View.VISIBLE);
+        txtExpenseDate.setText(sdf.format(expense.date));
     }
 
     void handleNewInvoice() {
         selectedDateTime = Calendar.getInstance();
         expense.date = selectedDateTime.getTime();
         txtExpenseDate.setText(sdf.format(selectedDateTime.getTime()));
+    }
+
+    boolean isSharedInvoice() {
+        String action = getIntent().getAction();
+        return action != null && action.equals(Intent.ACTION_SEND);
     }
 
     void handleSharedInvoice() {
@@ -191,7 +197,13 @@ public class NewExpenseActivity extends AppCompatActivity {
     }
 
     void initDatePickerDialog() {
-        final Calendar now = Calendar.getInstance();
+        Calendar now = Calendar.getInstance();
+        if(isEditMode)
+        {
+            now.setTime(expense.date);
+            selectedDateTime = now;
+        }
+
         datePickerDialog = new DatePickerDialog(this);
         datePickerDialog.setOnDateSetListener((view, year, month, dayOfMonth) -> {
             selectedDateTime.set(Calendar.YEAR, year);
