@@ -92,7 +92,7 @@ public class NewExpenseActivity extends AppCompatActivity {
         initDatePickerDialog();
 
 
-        if(isEditMode) handleEditInvoice();
+        if(isEditMode && !isSharedInvoice()) handleEditInvoice();
         else handleNewInvoice();
 
         if(isSharedInvoice()) handleSharedInvoice();
