@@ -42,6 +42,7 @@ public class AttachInvoiceDialog extends DialogFragment {
                 result -> {
                     if(result.getResultCode() == Activity.RESULT_OK) {
                         Intent intent = result.getData();
+
                         if(intent != null) {
                             cameraUsed = false;
                             invoicePath = intent.getData();
